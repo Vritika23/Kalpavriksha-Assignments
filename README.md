@@ -1,6 +1,6 @@
 # Kalpavriksha Assignments
 
-Assignment submissions for the **Kalpavriksha Program (Batch 2026-27, Group E)**, written in **C**.
+Assignment submissions for the **Kalpavriksha Program (Group E)**, written in **C**.
 
 **Author:** Vritika Dadhich
 **GitHub:** [vritika23](https://github.com/vritika23)
