@@ -1,11 +1,27 @@
 #include <stdio.h>
 #include <ctype.h>
+#include <limits.h>
 
-int numStack[1000];
-char opStack[1000];
-int numTop = -1;
-int opTop = -1;
-int divByZero = 0;
+#define MAX_STACK_SIZE 1000
+#define MAX_INPUT_SIZE 1000
+
+typedef enum {
+    CALC_OK = 0,
+    CALC_ERR_INVALID,
+    CALC_ERR_DIV_ZERO
+} CalcStatus;
+
+typedef struct {
+    int numStack[MAX_STACK_SIZE];
+    char opStack[MAX_STACK_SIZE];
+    int numTop;
+    int opTop;
+} Calculator;
+
+void initCalculator(Calculator *calc) {
+    calc->numTop = -1;
+    calc->opTop = -1;
+}
 
 int precedence(char op) {
     if (op == '*' || op == '/')
@@ -13,10 +29,28 @@ int precedence(char op) {
     return 1;
 }
 
-void applyOperator() {
-    int second = numStack[numTop--];
-    int first = numStack[numTop--];
-    char op = opStack[opTop--];
+CalcStatus pushNumber(Calculator *calc, int value) {
+    if (calc->numTop >= MAX_STACK_SIZE - 1)
+        return CALC_ERR_INVALID;
+    calc->numStack[++calc->numTop] = value;
+    return CALC_OK;
+}
+
+CalcStatus pushOperator(Calculator *calc, char op) {
+    if (calc->opTop >= MAX_STACK_SIZE - 1)
+        return CALC_ERR_INVALID;
+    calc->opStack[++calc->opTop] = op;
+    return CALC_OK;
+}
+
+CalcStatus applyOperator(Calculator *calc) {
+    // need at least 2 numbers and 1 operator
+    if (calc->numTop < 1 || calc->opTop < 0)
+        return CALC_ERR_INVALID;
+
+    int second = calc->numStack[calc->numTop--];
+    int first = calc->numStack[calc->numTop--];
+    char op = calc->opStack[calc->opTop--];
     int result = 0;
 
     if (op == '+')
@@ -25,70 +59,101 @@ void applyOperator() {
         result = first - second;
     else if (op == '*')
         result = first * second;
-    else {
+    else if (op == '/') {
         if (second == 0)
-            divByZero = 1;
-        else
-            result = first / second;
+            return CALC_ERR_DIV_ZERO;
+        result = first / second;
     }
-    numStack[++numTop] = result;
+    else
+        return CALC_ERR_INVALID;
+
+    return pushNumber(calc, result);
 }
 
-int main() {
-    char expr[1000];
-    int i, number;
+CalcStatus evaluate(const char *expr, int *result) {
+    Calculator calc;
+    int i, number, digit;
     int expectNumber = 1;
+    CalcStatus status;
 
-    fgets(expr, 1000, stdin);
+    initCalculator(&calc);
 
     for (i = 0; expr[i] != '\0' && expr[i] != '\n'; i++) {
-        if (expr[i] == ' ' || expr[i] == '\t' || expr[i] == '"')
+        if (expr[i] == ' ' || expr[i] == '\t')
             continue;
 
-        if (isdigit(expr[i])) {
-            if (expectNumber == 0) {
-                printf("Error: Invalid expression.\n");
-                return 0;
-            }
+        if (isdigit((unsigned char)expr[i])) {
+            if (expectNumber == 0)
+                return CALC_ERR_INVALID;
+
             number = 0;
-            while (isdigit(expr[i])) {
-                number = number * 10 + (expr[i] - '0');
+            while (isdigit((unsigned char)expr[i])) {
+                digit = expr[i] - '0';
+                if (number > (INT_MAX - digit) / 10)
+                    return CALC_ERR_INVALID;
+                number = number * 10 + digit;
                 i++;
             }
-            i--; 
-            numStack[++numTop] = number;
+            i--;
+
+            status = pushNumber(&calc, number);
+            if (status != CALC_OK)
+                return status;
             expectNumber = 0;
         }
         else if (expr[i] == '+' || expr[i] == '-' || expr[i] == '*' || expr[i] == '/') {
-            if (expectNumber == 1) {
-                printf("Error: Invalid expression.\n");
-                return 0;
-            }
+            if (expectNumber == 1)
+                return CALC_ERR_INVALID;
+
             // if old operator is same or higher, solve it first
-            while (opTop >= 0 && precedence(opStack[opTop]) >= precedence(expr[i]))
-                applyOperator();
-            opStack[++opTop] = expr[i];
+            while (calc.opTop >= 0 &&
+                   precedence(calc.opStack[calc.opTop]) >= precedence(expr[i])) {
+                status = applyOperator(&calc);
+                if (status != CALC_OK)
+                    return status;
+            }
+
+            status = pushOperator(&calc, expr[i]);
+            if (status != CALC_OK)
+                return status;
             expectNumber = 1;
         }
         else {
-            printf("Error: Invalid expression.\n");
-            return 0;
+            return CALC_ERR_INVALID;
         }
     }
 
-    if (expectNumber == 1) {
-        printf("Error: Invalid expression.\n");
-        return 0;
+    if (expectNumber == 1)
+        return CALC_ERR_INVALID;
+
+    while (calc.opTop >= 0) {
+        status = applyOperator(&calc);
+        if (status != CALC_OK)
+            return status;
     }
 
-    while (opTop >= 0)
-        applyOperator();
+    *result = calc.numStack[calc.numTop];
+    return CALC_OK;
+}
 
-    // checking div by zero at end, invalid check is first
-    if (divByZero == 1)
+int main() {
+    char expr[MAX_INPUT_SIZE];
+    int result;
+    CalcStatus status;
+
+    if (fgets(expr, sizeof(expr), stdin) == NULL) {
+        printf("Error: Invalid expression.\n");
+        return 1;
+    }
+
+    status = evaluate(expr, &result);
+
+    if (status == CALC_OK)
+        printf("%d\n", result);
+    else if (status == CALC_ERR_DIV_ZERO)
         printf("Error: Division by zero.\n");
     else
-        printf("%d\n", numStack[numTop]);
+        printf("Error: Invalid expression.\n");
 
     return 0;
 }
