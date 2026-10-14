@@ -116,7 +116,7 @@ int main()
     printf("\n----- Student Performance Report -----\n\n");
     for (int studentIndex = 0; studentIndex < studentCount; studentIndex++)
     {
-        int totalMarks = calculateTotal(students[studentIndex]);
+        int totalMarks = calculateTotal(&students[studentIndex]);
         float averageMarks = calculateAverage(totalMarks);
         char grade = assignGrade(averageMarks);
         totalStudentsProcessed++;
