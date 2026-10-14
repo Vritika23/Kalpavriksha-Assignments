@@ -9,12 +9,12 @@ struct Student
 
 int totalStudentsProcessed = 0;
 
-int calculateTotal(struct Student student)
+int calculateTotal(struct Student *student)
 {
     int totalMarks = 0;
     for (int subjectIndex = 0; subjectIndex < 3; subjectIndex++)
     {
-        totalMarks += student.marks[subjectIndex];
+        totalMarks += student->marks[subjectIndex];
     }
     return totalMarks;
 }
