@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#include <stdlib.h>
 struct Student
 {
     int rollNumber;
@@ -80,16 +80,50 @@ void printRollNumbers(struct Student students[], int currentIndex, int studentCo
     printf("%d ", students[currentIndex].rollNumber);
     printRollNumbers(students, currentIndex + 1, studentCount);
 }
+void clearInputBuffer(void)
+{
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF)
+    {
+    }
+}
 
+int readInteger(const char *prompt, int minValue, int maxValue)
+{
+    int value;
+    int result;
+
+    while (1)
+    {
+        printf("%s", prompt);
+        result = scanf("%d", &value);
+
+        if (result == EOF)
+        {
+            printf("\nInput ended unexpectedly. Exiting.\n");
+            exit(1);
+        }
+
+        clearInputBuffer();
+
+        if (result != 1)
+        {
+            printf("Invalid input. Please enter a number.\n");
+            continue;
+        }
+        if (value < minValue || value > maxValue)
+        {
+            printf("Value must be between %d and %d.\n", minValue, maxValue);
+            continue;
+        }
+        return value;
+    }
+}
 int readMarks(int subjectNumber)
 {
-    int marks;
-    do
-    {
-        printf("Enter marks in subject %d (0-100): ", subjectNumber);
-        scanf("%d", &marks);
-    } while (marks < 0 || marks > 100);
-    return marks;
+    char prompt[50];
+    snprintf(prompt, sizeof(prompt), "Enter marks in subject %d (0-100): ", subjectNumber);
+    return readInteger(prompt, 0, 100);
 }
 
 int main()
