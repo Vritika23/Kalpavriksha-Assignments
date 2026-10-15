@@ -1,175 +1,223 @@
-#include <stdio.h>
-#include <stdlib.h>
-struct Student
-{
-    int rollNumber;
+#include<stdio.h>
+#include<stdlib.h>
+#include<ctype.h>
+
+struct Student {
     char name[50];
+    int rollno;
     int marks[3];
 };
 
-int totalStudentsProcessed = 0;
-
-int calculateTotal(struct Student *student)
-{
-    int totalMarks = 0;
-    for (int subjectIndex = 0; subjectIndex < 3; subjectIndex++)
-    {
-        totalMarks += student->marks[subjectIndex];
+// Calculate total marks
+int calculateTotal(struct Student *arr) {
+    int sum = 0;
+    for(int i = 0; i < 3; i++) {
+        sum += arr->marks[i];
     }
-    return totalMarks;
+    return sum;
 }
 
-float calculateAverage(int totalMarks)
-{
+// Calculate average marks
+float calculateAverage(int totalMarks) {
     return totalMarks / 3.0;
 }
 
-char assignGrade(float averageMarks)
-{
-    if (averageMarks >= 85)
-    {
-        return 'A';
-    }
-    else if (averageMarks >= 70)
-    {
-        return 'B';
-    }
-    else if (averageMarks >= 50)
-    {
-        return 'C';
-    }
-    else if (averageMarks >= 35)
-    {
-        return 'D';
-    }
-    return 'F';
+// Assign grade based on average
+char calculateGrade(float avgMarks) {
+    if(avgMarks >= 85) return 'A';
+    else if(avgMarks >= 70) return 'B';
+    else if(avgMarks >= 50) return 'C';
+    else if(avgMarks >= 35) return 'D';
+    else return 'F';
 }
 
-int getStarCount(char grade)
-{
-    switch (grade)
-    {
-        case 'A':
-            return 5;
-        case 'B':
-            return 4;
-        case 'C':
-            return 3;
-        case 'D':
-            return 2;
-        default:
-            return 0;
+// Get stars for grade
+int getStarCount(char grade) {
+    int n = 0;
+    switch(grade) {
+        case 'A': n = 5;
+        break;
+        case 'B': n = 4;
+        break;
+        case 'C': n = 3;
+        break;
+        case 'D': n = 2;
+        break;
+        default: n = 0;
     }
+    return n;
 }
 
-void printStars(int starCount)
-{
-    for (int starIndex = 0; starIndex < starCount; starIndex++)
-    {
+// Print star pattern
+void printStars(int n) {
+    for(int i = 0; i < n; i++) {
         printf("*");
     }
-    printf("\n");
 }
 
-void printRollNumbers(struct Student students[], int currentIndex, int studentCount)
-{
-    if (currentIndex == studentCount)
-    {
-        return;
-    }
-    printf("%d ", students[currentIndex].rollNumber);
-    printRollNumbers(students, currentIndex + 1, studentCount);
-}
-void clearInputBuffer(void)
-{
-    int ch;
-    while ((ch = getchar()) != '\n' && ch != EOF)
-    {
-    }
+// Print roll numbers recursively
+void displayRollNumbers(struct Student *arr, int i, int n) {
+    if(i >= n) return;
+    printf("%d ", (arr + i)->rollno);
+    displayRollNumbers(arr, i + 1, n);
 }
 
-int readInteger(const char *prompt, int minValue, int maxValue)
-{
-    int value;
-    int result;
+// Read student count
+int readStudentCount() {
+    int n;
+    char input[100];
+    char extra;
 
-    while (1)
-    {
-        printf("%s", prompt);
-        result = scanf("%d", &value);
-
-        if (result == EOF)
-        {
-            printf("\nInput ended unexpectedly. Exiting.\n");
-            exit(1);
+    while(1) {
+        printf("Enter Number of Students: ");
+        if(fgets(input, sizeof(input), stdin) == NULL) {
+            printf("Error Reading the input!");
+            return -1;
         }
 
-        clearInputBuffer();
-
-        if (result != 1)
-        {
-            printf("Invalid input. Please enter a number.\n");
+        if(sscanf(input, "%d %c", &n, &extra) != 1) {
+            printf("Invalid input! Enter an Integer Only!\n");
             continue;
         }
-        if (value < minValue || value > maxValue)
-        {
-            printf("Value must be between %d and %d.\n", minValue, maxValue);
+
+        // Validate student count
+        if(n < 1 || n > 100) {
+            printf("Number of Students must lie between 1 - 100\n");
             continue;
         }
-        return value;
+
+        break;
     }
-}
-int readMarks(int subjectNumber)
-{
-    char prompt[50];
-    snprintf(prompt, sizeof(prompt), "Enter marks in subject %d (0-100): ", subjectNumber);
-    return readInteger(prompt, 0, 100);
+    return n;
 }
 
-int main()
-{
-    int studentCount;
-    struct Student students[100];
-    do
-    {
-        printf("Enter number of students (1-100): ");
-        scanf("%d", &studentCount);
-    } while (studentCount < 1 || studentCount > 100);
-    for (int studentIndex = 0; studentIndex < studentCount; studentIndex++)
-    {
-        printf("\nEnter details for student %d\n", studentIndex + 1);
-        printf("Enter roll number: ");
-        scanf("%d", &students[studentIndex].rollNumber);
-        printf("Enter name: ");
-        scanf("%s", students[studentIndex].name);
-        for (int subjectIndex = 0; subjectIndex < 3; subjectIndex++)
-        {
-            students[studentIndex].marks[subjectIndex] = readMarks(subjectIndex + 1);
+// Validate marks
+int validateMarks(int marks) {
+    if(marks < 0 || marks > 100) {
+        printf("Marks must be between 0 and 100.\n");
+        return 0;
+    }
+    return 1;
+}
+
+// Validate student name
+int validateName(char *name) {
+    for(int i = 0; name[i] != '\0'; i++) {
+        if(!isalpha((unsigned char) name[i])) return 0;
+    }
+    return 1;
+}
+
+// Read student details
+int readStudentDetails(struct Student *arr, int n) {
+    char input[200];
+    char extra;
+
+    for(int i = 0; i < n; i++) {
+        while(1) {
+            printf("Enter RollNo%d, Name%d, Marks1, Marks2, Marks3: ", i + 1, i + 1);
+
+            if(fgets(input, sizeof(input), stdin) == NULL) {
+                printf("Error Taking input!");
+                return 0;
+            }
+
+            if(sscanf(input, "%d %49s %d %d %d %c",
+                &arr[i].rollno, arr[i].name,
+                &arr[i].marks[0], &arr[i].marks[1],
+                &arr[i].marks[2], &extra) != 5) {
+                printf("Enter all 5 fields correctly!\n");
+                continue;
+            }
+
+            if(!validateName(arr[i].name)) {
+                printf("Invalid Name! Use alphbetic Characters only.\n");
+                continue;
+            }
+
+            if(arr[i].rollno < 1) {
+                printf("Roll Number must be atleast 1.\n");
+                continue;
+            }
+
+            int valid = 1;
+
+            for(int j = 0; j < 3; j++) {
+                if(!validateMarks(arr[i].marks[j])) {
+                    valid = 0;
+                    break;
+                }
+            }
+
+            if(!valid) {
+                printf("Please re-enter all five fields.\n");
+                continue;
+            }
+
+            break;
         }
     }
-    printf("\n----- Student Performance Report -----\n\n");
-    for (int studentIndex = 0; studentIndex < studentCount; studentIndex++)
-    {
-        int totalMarks = calculateTotal(&students[studentIndex]);
-        float averageMarks = calculateAverage(totalMarks);
-        char grade = assignGrade(averageMarks);
-        totalStudentsProcessed++;
-        printf("Roll: %d\n", students[studentIndex].rollNumber);
-        printf("Name: %s\n", students[studentIndex].name);
-        printf("Total: %d\n", totalMarks);
-        printf("Average: %.2f\n", averageMarks);
-        printf("Grade: %c\n", grade);
-        if (averageMarks < 35)
-        {
-            printf("\n");
+    return 1;
+}
+
+// Display student reports
+void printStudentReports(struct Student *arr, int n) {
+    for(int i = 0; i < n; i++) {
+        // Print student details
+        printf("\nRoll No.: %d\nName: %s", arr[i].rollno, arr[i].name);
+
+        // Calculate total
+        int totalmarks = calculateTotal(&arr[i]);
+        printf("\nTotal Marks: %d", totalmarks);
+
+        // Calculate average
+        float avgmarks = calculateAverage(totalmarks);
+        printf("\nAverage Marks: %f", avgmarks);
+
+        // Calculate grade
+        char grade = calculateGrade(avgmarks);
+        printf("\nGrade: %c", grade);
+
+        // Print performance pattern
+        if(avgmarks < 35) {
+            printf("\nStudent's average below 35, so no pattern print!\n");
             continue;
         }
-        printf("Performance: ");
-        printStars(getStarCount(grade));
+
+        int numStars = getStarCount(grade);
+        printf("\nPerformance Pattern: ");
+        printStars(numStars);
         printf("\n");
     }
-    printf("List of Roll Numbers (via recursion): ");
-    printRollNumbers(students, 0, studentCount);
-    printf("\n");
+}
+
+int main() {
+    // Read student count
+    int n = readStudentCount();
+    if(n == -1) return 0;
+
+    struct Student *arr = malloc(n * sizeof(*arr));
+
+    if(arr == NULL) {
+        printf("Memory Allocation failed!");
+        return 1;
+    }
+
+    // Read student details
+    if(!readStudentDetails(arr, n)) {
+        printf("Error Reading Students Data");
+        free(arr);
+        return 1;
+    }
+
+    // Print student reports
+    printStudentReports(arr, n);
+
+    // Print roll numbers recursively
+    printf("\nList of Roll Numbers: ");
+    displayRollNumbers(arr, 0, n);
+
+    // Release allocated memory
+    free(arr);
     return 0;
 }
