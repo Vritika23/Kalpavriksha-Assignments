@@ -6,6 +6,12 @@
 
 #define NAME_SIZE 100
 #define DEG_SIZE 50
+#define LINE_SIZE 100
+
+#define INPUT_OK 1
+#define INPUT_TOO_LONG 0
+#define INPUT_EOF -1
+#define RESULT_NOMEM -2
 
 struct Employee {
     int id;
@@ -16,89 +22,109 @@ struct Employee {
     struct Employee *nextReport;
 };
 
-int inputInt() {
-    char input[NAME_SIZE];
-    char extra;
-    int n;
+int readLine(char *buf, size_t size) {
+    if(fgets(buf, (int)size, stdin) == NULL)
+        return INPUT_EOF;
 
-    if(fgets(input, sizeof(input), stdin) == NULL) {
-        printf("Error taking input");
-        return -1;
+    size_t len = strlen(buf);
+
+    if(len > 0 && buf[len - 1] == '\n') {
+        buf[len - 1] = '\0';
+        return INPUT_OK;
     }
 
-    if(sscanf(input, "%d %c", &n, &extra) != 1) {
-        printf("\nEnter only integer!");
-        printf("\nEnter Employee ID: ");
-        return inputInt();
-    }
+    int ch = getchar();
 
-    return n;
+    if(ch == '\n' || ch == EOF)
+        return INPUT_OK;
+
+    while(ch != '\n' && ch != EOF)
+        ch = getchar();
+
+    return INPUT_TOO_LONG;
+}
+
+int inputInt(const char *prompt, int *value) {
+    char input[LINE_SIZE];
+
+    while(1) {
+        printf("%s", prompt);
+
+        int status = readLine(input, sizeof(input));
+
+        if(status == INPUT_EOF)
+            return INPUT_EOF;
+
+        if(status == INPUT_TOO_LONG) {
+            printf("\nInput too long!\n");
+            continue;
+        }
+
+        int n;
+        char extra;
+
+        if(sscanf(input, "%d %c", &n, &extra) != 1) {
+            printf("\nEnter only integer!\n");
+            continue;
+        }
+
+        *value = n;
+        return INPUT_OK;
+    }
+}
+
+int inputText(const char *prompt, char *dest, size_t size) {
+    char input[NAME_SIZE > DEG_SIZE ? NAME_SIZE : DEG_SIZE];
+
+    while(1) {
+        printf("%s", prompt);
+
+        int status = readLine(input, size);
+
+        if(status == INPUT_EOF)
+            return INPUT_EOF;
+
+        if(status == INPUT_TOO_LONG) {
+            printf("\nInput too long! Maximum %zu characters.\n", size - 1);
+            continue;
+        }
+
+        int found = 0;
+        int valid = 1;
+
+        for(int i = 0; input[i] != '\0'; i++) {
+            unsigned char c = (unsigned char)input[i];
+
+            if(!isalpha(c) && !isspace(c)) {
+                valid = 0;
+                break;
+            }
+
+            if(!isspace(c))
+                found = 1;
+        }
+
+        if(!valid) {
+            printf("\nEnter only Letters\n");
+            continue;
+        }
+
+        if(!found) {
+            printf("\nString can't be empty!\n");
+            continue;
+        }
+
+        strcpy(dest, input);
+        return INPUT_OK;
+    }
 }
 
 int inputName(struct Employee *e) {
-    char input[NAME_SIZE];
-
-    if(fgets(input, sizeof(input), stdin) == NULL) {
-        printf("Error taking Input");
-        return -1;
-    }
-
-    input[strcspn(input, "\n")] = '\0';
-    int found = 0;
-
-    for(int i = 0; input[i] != '\0'; i++) {
-        char c = (unsigned char)input[i];
-
-        if(!isalpha(c) && !isspace(c)) {
-            printf("\nEnter only Letters");
-            printf("\nEnter: ");
-            return inputName(e);
-        }
-
-        if(!isspace(c))
-            found = 1;
-    }
-
-    if(!found) {
-        printf("\nString can't be empty!");
-        return inputName(e);
-    }
-
-    strcpy(e->name, input);
-    return 1;
+    return inputText("Enter employee name: ", e->name, NAME_SIZE);
 }
 
 int inputDesignation(struct Employee *e) {
-    char input[DEG_SIZE];
-
-    if(fgets(input, sizeof(input), stdin) == NULL) {
-        printf("Error taking Input");
-        return -1;
-    }
-
-    input[strcspn(input, "\n")] = '\0';
-    int found = 0;
-
-    for(int i = 0; input[i] != '\0'; i++) {
-        char c = (unsigned char)input[i];
-
-        if(!isalpha(c) && !isspace(c)) {
-            printf("\nEnter only Letters");
-            printf("\nEnter: ");
-            return inputDesignation(e);
-        }
-
-        if(!isspace(c))
-            found = 1;
-    }
-
-    if(!found) {
-        printf("\nString can't be empty!");
-        return inputDesignation(e);
-    }
-
-    strcpy(e->designation, input);
-    return 1;
+    return inputText("Enter designation: ", e->designation, DEG_SIZE);
 }
 
 struct Employee *searchEmployee(struct Employee *e, int id) {
@@ -109,9 +135,11 @@ struct Employee *searchEmployee(struct Employee *e, int id) {
         return e;
 
     struct Employee *a = searchEmployee(e->firstReport, id);
-    struct Employee *b = searchEmployee(e->nextReport, id);
 
-    return a != NULL ? a : b;
+    if(a != NULL)
+        return a;
+
+    return searchEmployee(e->nextReport, id);
 }
 
 int countReports(struct Employee *e) {
@@ -128,6 +156,13 @@ int countEmployees(struct Employee *root) {
     return countEmployees(root->firstReport)
          + countEmployees(root->nextReport)
          + 1;
+}
+
+int countEmployeesUnder(struct Employee *e) {
+    if(e == NULL)
+        return 0;
+
+    return countEmployees(e->firstReport);
 }
 
 struct Employee *findLastEmployee(struct Employee *e) {
@@ -191,60 +226,70 @@ struct Employee *createEmployee(int id) {
         return NULL;
 
     e->id = id;
+    e->name[0] = '\0';
+    e->designation[0] = '\0';
     e->manager = NULL;
     e->firstReport = NULL;
     e->nextReport = NULL;
     return e;
 }
 
-int readEmployeeDetails(struct Employee *e) {
-    printf("Enter employee name: ");
-    if(inputName(e) == -1)
-        return -1;
+void freeHierarchy(struct Employee *e) {
+    if(e == NULL)
+        return;
 
-    printf("Enter designation: ");
-    if(inputDesignation(e) == -1)
-        return -1;
-
-    return 1;
+    freeHierarchy(e->firstReport);
+    freeHierarchy(e->nextReport);
+    free(e);
 }
 
-int readNewId(struct Employee *root) {
-    printf("\nEnter employee ID: ");
-    int id = inputInt();
+int readEmployeeDetails(struct Employee *e) {
+    if(inputName(e) == INPUT_EOF)
+        return INPUT_EOF;
 
-    if(id == -1)
-        return -1;
+    if(inputDesignation(e) == INPUT_EOF)
+        return INPUT_EOF;
 
-    if(id <= 0) {
-        printf("\nID must be greater than 0");
+    return INPUT_OK;
+}
+
+int readNewId(struct Employee *root, int *id) {
+    int value;
+
+    if(inputInt("\nEnter employee ID: ", &value) == INPUT_EOF)
+        return INPUT_EOF;
+
+    if(value <= 0) {
+        printf("\nID must be greater than 0\n");
         return 0;
     }
 
-    if(searchEmployee(root, id) != NULL) {
+    if(searchEmployee(root, value) != NULL) {
         printf("Employee ID already exists!\n");
         return 0;
     }
 
-    return id;
+    *id = value;
+    return 1;
 }
 
 int insertEmployee(struct Employee **root) {
-    int id = readNewId(*root);
+    int id;
+    int status = readNewId(*root, &id);
 
-    if(id <= 0)
-        return id;
+    if(status != 1)
+        return status;
 
     struct Employee *newEmployee = createEmployee(id);
 
     if(newEmployee == NULL) {
         printf("Memory allocation failed!\n");
-        return -1;
+        return RESULT_NOMEM;
     }
 
-    if(readEmployeeDetails(newEmployee) == -1) {
+    if(readEmployeeDetails(newEmployee) == INPUT_EOF) {
         free(newEmployee);
-        return -1;
+        return INPUT_EOF;
     }
 
     if(*root == NULL) {
@@ -253,24 +298,17 @@ int insertEmployee(struct Employee **root) {
         return 1;
     }
 
-    printf("Enter reporting manager ID: ");
-    int managerId = inputInt();
+    int managerId;
 
-    if(managerId == -1) {
+    if(inputInt("Enter reporting manager ID: ", &managerId) == INPUT_EOF) {
         free(newEmployee);
-        return -1;
+        return INPUT_EOF;
     }
 
     struct Employee *manager = searchEmployee(*root, managerId);
 
     if(manager == NULL) {
         printf("Manager not found!\n");
-        free(newEmployee);
-        return 0;
-    }
-
-    if(manager == newEmployee) {
-        printf("An employee cannot manage themselves!\n");
         free(newEmployee);
         return 0;
     }
@@ -302,12 +340,12 @@ int deleteEmployee(struct Employee **root, int id) {
     struct Employee *target = searchEmployee(*root, id);
 
     if(target == NULL) {
-        printf("\nEmployee Don't Exits");
+        printf("\nEmployee doesn't exist\n");
         return 0;
     }
 
     if(*root == target) {
-        printf("\nCEO Can't be removed");
+        printf("\nCEO can't be removed\n");
         return 0;
     }
 
@@ -325,7 +363,7 @@ int deleteEmployee(struct Employee **root, int id) {
 
     free(target);
 
-    printf("\nEmployee removed successfully.");
+    printf("\nEmployee removed successfully.\n");
     return 1;
 }
 
@@ -342,15 +380,17 @@ void showHierarchy(struct Employee *root, int showSibling) {
 }
 
 void showCompleteHierarchy(struct Employee *root) {
-    if(root == NULL)
+    if(root == NULL) {
+        printf("\nNo employees yet.\n");
         return;
+    }
 
     showHierarchy(root, 0);
     printf("Total Employees: %d\n", countEmployees(root));
 }
 
 void printMenu() {
-    printf("1. Add Employee\n");
+    printf("\n1. Add Employee\n");
     printf("2. Remove Employee\n");
     printf("3. Display Employee Hierarchy\n");
     printf("4. Display Complete Hierarchy\n");
@@ -361,46 +401,62 @@ int handleAdd(struct Employee **root) {
     return insertEmployee(root);
 }
 
-void handleRemove(struct Employee **root) {
-    printf("\nEnter Employee ID to remove: ");
-    int id = inputInt();
+int handleRemove(struct Employee **root) {
+    int id;
+
+    if(inputInt("\nEnter Employee ID to remove: ", &id) == INPUT_EOF)
+        return INPUT_EOF;
 
     deleteEmployee(root, id);
+    return 1;
 }
 
-void handleShowOne(struct Employee *root) {
-    printf("\nEnter Employee ID: ");
-    int id = inputInt();
+int handleShowOne(struct Employee *root) {
+    int id;
 
-    if(id == -1)
-        return;
+    if(inputInt("\nEnter Employee ID: ", &id) == INPUT_EOF)
+        return INPUT_EOF;
 
     struct Employee *e = searchEmployee(root, id);
 
-    if(e == NULL)
-        printf("Employee Not found!");
-    else
-        showHierarchy(e, 0);
+    if(e == NULL) {
+        printf("Employee Not found!\n");
+        return 1;
+    }
+
+    showHierarchy(e, 0);
+    printf("Total employees reporting under %d: %d\n",
+           e->id, countEmployeesUnder(e));
+    return 1;
 }
 
 int main() {
     struct Employee *root = NULL;
+    int exitCode = 0;
+    int running = 1;
 
-    while(1) {
+    while(running) {
+        int choice;
+        int result = 1;
+
         printMenu();
 
-        switch(inputInt()) {
+        if(inputInt("Enter choice: ", &choice) == INPUT_EOF) {
+            printf("\nNo more input. Exiting.\n");
+            break;
+        }
+
+        switch(choice) {
             case 1:
-                if(handleAdd(&root) == -1)
-                    return 1;
+                result = handleAdd(&root);
                 break;
 
             case 2:
-                handleRemove(&root);
+                result = handleRemove(&root);
                 break;
 
             case 3:
-                handleShowOne(root);
+                result = handleShowOne(root);
                 break;
 
             case 4:
@@ -408,12 +464,24 @@ int main() {
                 break;
 
             case 5:
-                return 0;
+                running = 0;
+                break;
 
             default:
                 printf("Enter options from 1 - 5\n");
         }
+
+        if(result == INPUT_EOF) {
+            printf("\nNo more input. Exiting.\n");
+            break;
+        }
+
+        if(result == RESULT_NOMEM) {
+            exitCode = 1;
+            break;
+        }
     }
 
-    return 0;
+    freeHierarchy(root);
+    return exitCode;
 }
